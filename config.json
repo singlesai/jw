@@ -1,0 +1,14 @@
+{
+    "server": {
+        "port": 81,
+        "db": {
+            "host": "127.0.0.1",
+            "user": "root",
+            "password": "zjyLD123",
+            "database": "shenridb"
+        }
+    },
+    "client": {
+        
+    }
+}

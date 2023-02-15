@@ -1,0 +1,2 @@
+"use strict";(self["webpackChunktico_yt_mobile"]=self["webpackChunktico_yt_mobile"]||[]).push([[359],{6359:function(t,e,n){n.r(e),n.d(e,{default:function(){return s}});var r=n(537);function i(t,e,n,i,u,c){return(0,r.wg)(),(0,r.iD)("div",null,"test")}var u={name:"recList"},c=n(3169);const o=(0,c.Z)(u,[["render",i]]);var s=o}}]);
+//# sourceMappingURL=359.f4bf9b49.js.map
