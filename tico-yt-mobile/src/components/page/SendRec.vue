@@ -43,7 +43,7 @@
       
       
       <van-divider>明细</van-divider>
-      <van-card v-for="(rec,idx) in entry" :key="idx" :title="rec.product[1]" :desc="'在租:' + rec.loaned?'0':rec.loaned" :num="rec.weight">
+      <van-card v-for="(rec,idx) in entry" :key="idx" :title="rec.product[1]" :desc="'在租:' + (rec.loaned?rec.loaned:'0')" :num="rec.weight">
         <template #tags>
           <van-tag plain v-for="loss in rec.loss.filter(e=>{return e.qty!==undefined && e.qty>0})" :key="loss.lossType.id">{{loss.lossType.name}}:{{loss.qty}}</van-tag>
         </template>
@@ -274,11 +274,13 @@ export default {
           }
         }
         */
+       if (sid) {
         var pins = await odooApi.model('odoo.jw.project.inventory').searchRead([['project_id', '=', this.data.projectId]], ['product_id', 'qty', 'weight'])
         for (iidx in pins) {
           productIds.push(pins[iidx].product_id[0])
           this.productLoaned[pins[iidx].product_id[0]] = pins[iidx].qty
         }
+       }
         this.productTree = [{text: '在租', children: []}]
         // this.products = await odooApi.model('product.product').searchRead([['id', 'in', productIds]], ['id', 'code_number', 'name', 'specification', 'categ_id', 'uom_id', 'product_loss_ids', 'product_tmpl_id', 'weight'], 0, productIds.length)
         this.products = await odooApi.model('product.product').searchRead([], ['id', 'code_number', 'name', 'specification', 'categ_id', 'uom_id', 'product_loss_ids', 'product_tmpl_id', 'weight', 'series'], 0, 99999999)

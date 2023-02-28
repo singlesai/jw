@@ -13,7 +13,7 @@
             </template>
             <template #footer>
               <van-button size="mini" @click="onAddDest(rec.id)">编辑</van-button>
-              <van-button size="mini" @click="onDel(rec.id)">删除</van-button>
+              <!--van-button size="mini" @click="onDel(rec.id)">删除</van-button-->
             </template>
           </van-card>
         </template>
