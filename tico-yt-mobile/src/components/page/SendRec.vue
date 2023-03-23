@@ -36,7 +36,8 @@
         <van-tab title="过磅信息">
           <van-field v-model="data.weightTypeName" readonly label="计重方式"></van-field>
           <van-field v-model="data.custWeight" :required="data.weightTypeName && data.weightTypeName.includes('过磅')" label="客户总重"></van-field>
-          <van-field v-model="data.custNet" :required="data.weightTypeName && data.weightTypeName.includes('过磅')" label="客户皮重"></van-field>
+          <van-field v-model="data.custTare" :required="data.weightTypeName && data.weightTypeName.includes('过磅')" label="客户皮重"></van-field>
+          <van-field v-model="custNet" readonly label="客户净重"></van-field>
           <van-field v-model="data.weight" readonly label="计算重量"></van-field>
         </van-tab>
       </van-tabs>
@@ -50,7 +51,9 @@
         <template #footer>
           <van-field type="digit" v-model="rec.returnQty" label="退货数量"/>
           <van-field type="digit" v-model="rec.scrapQty" label="报废数量"/>
-          <van-field type="digit" v-model="rec.overQty" label="翻包数量"/>
+          <van-field type="digit" v-model="rec.overQty" label="翻包包数"/>
+          <van-field type="digit" v-model="rec.overGQty" label="翻包根数"/>
+          <van-field v-model="rec.remark" label="备注"/>
           <van-button size="mini" @click="delRec(rec)">删除</van-button>
           <van-button v-if="rec.loss.length>0" size="mini" @click="showDetail(rec)">损坏明细</van-button>
         </template>
@@ -126,6 +129,11 @@ export default {
         this.data.weight = (weight / 1000).toFixed(3)
       },
       deep: true
+    }
+  },
+  computed: {
+    custNet () {
+      return Number(this.data.custWeight || 0) - Number(this.data.custTare || 0)
     }
   },
   mounted () {
@@ -204,7 +212,7 @@ export default {
             data.weightType = data.weight_form_id[0],
             data.weightTypeName = data.weight_form_id[1],
             data.custWeight = data.total_weight,
-            data.custNet = data.tare_weight,
+            data.custTare = data.tare_weight,
             data.receiverPhone = data.receiver_phone,
             data.stockName = data.stock_id[1]
             data.stock = data.stock_id[0]
@@ -217,7 +225,7 @@ export default {
               data.partner_id = datas[0].partner_id
             }
             this.data = data
-            var entry = await odooApi.model('stock.return.received.line').read(this.data.actual_received_line_ids, ['id', 'product_id', 'actual_return_qty', 'qty', 'scrap_qty', 'package_qty', 'stock_return_received_loss_line_ids'])
+            var entry = await odooApi.model('stock.return.received.line').read(this.data.actual_received_line_ids, ['id', 'product_id', 'actual_return_qty', 'qty', 'scrap_qty', 'package_qty', 'remark', 'stock_return_received_loss_line_ids'])
             for (var idx in entry) {
               entry[idx].product = entry[idx].product_id
               entry[idx].returnQty = entry[idx].actual_return_qty
@@ -226,6 +234,7 @@ export default {
               entry[idx].uom_id = products[0].uom_id
               entry[idx].scrapQty = entry[idx].scrap_qty
               entry[idx].overQty = entry[idx].package_qty
+              entry[idx].overGQty = entry[idx].package_qty_1
               var product_loss = await odooApi.model('product.loss').read(products[0].product_loss_ids, ['id', 'name', 'abbreviation'])
               var rec_loss = await odooApi.model('stock.return.received.loss.line').read(entry[idx].stock_return_received_loss_line_ids, ['id', 'product_loss_id', 'qty'])
               var lossType = []
@@ -275,7 +284,7 @@ export default {
         }
         */
        if (sid) {
-        var pins = await odooApi.model('odoo.jw.project.inventory').searchRead([['project_id', '=', this.data.projectId]], ['product_id', 'qty', 'weight'])
+        var pins = await odooApi.model('odoo.jw.project.inventory').searchRead([['project_id', '=', this.data.projectId]], ['product_id', 'qty', 'weight'], 0, 9999)
         for (iidx in pins) {
           productIds.push(pins[iidx].product_id[0])
           this.productLoaned[pins[iidx].product_id[0]] = pins[iidx].qty
@@ -403,7 +412,7 @@ export default {
         if(!this.data.receiverPhone) throw('请输入签收人电话')
         if(this.data.weightTypeName.includes('过磅')) {
           if(!this.data.custWeight) throw('请输入客户总重')
-          if(!this.data.custNet) throw('请输入客户皮重')
+          if(!this.data.custTare) throw('请输入客户皮重')
         }
         var rst = {
           return_date: this.data.strSendDate,
@@ -423,8 +432,8 @@ export default {
           driver_phone: this.data.driverPhone,
           compute_weight: this.data.weight,
           total_weight: this.data.custWeight,
-          tare_weight: this.data.custNet,
-          net_weight: this.data.custWeight - this.data.custNet,
+          tare_weight: this.data.custTare,
+          net_weight: this.data.custWeight - this.data.custTare,
           material_remark: this.data.loanProduct,
           actual_received_line_ids: [],
           stock_return_received_loss_line_ids: [],
@@ -442,6 +451,8 @@ export default {
               qty: entry.returnQty, // entry.qty,
               scrap_qty: entry.scrapQty,
               package_qty: entry.overQty,
+              package_qty_1: entry.overGQty,
+              remark: entry.remark,
               stock_return_received_loss_line_ids: []
             }
             for (var kdx in entry.loss) {
@@ -570,11 +581,11 @@ export default {
           p = doc.printText(p.x1, p.y, p.x1 + 160, p.y1, this.data.driverPhone || '', {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
 
           rowHeight += 10
-          p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + rowHeight, "NO", {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-          p = doc.printText(p.x1, p.y, p.x1 + 100, p.y1, "产品名称", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+          p = doc.printText(page.left, p.y1, page.left + 20, p.y1 + rowHeight, "NO", {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+          p = doc.printText(p.x1, p.y, p.x1 + 150, p.y1, "产品名称", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
           // p = doc.printText(p.x1, p.y, p.x1 + 100, p.y1, "产品名称", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
           // p = doc.printText(p.x1, p.y, p.x1 + 150, p.y1, "产品规格(mm)", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-          p = doc.printText(p.x1, p.y, p.x1 + 40, p.y1, "单位", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+          p = doc.printText(p.x1, p.y, p.x1 + 20, p.y1, "单位", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
           p = doc.printText(p.x1, p.y, p.x1 + 50, p.y1, "数量", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
           p = doc.printText(p.x1, p.y, p.x1 + 310, p.y1, "备注", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
 
@@ -584,11 +595,11 @@ export default {
             var rec = this.entry[jdx]
             var loss = rec.loss.filter(e => {return e.qty && e.qty > 0})
             var tmpRowHeight = rowHeight // * (loss.length || 1)
-            p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + tmpRowHeight, String(Number(jdx) + 1), {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-            p = doc.printText(p.x1, p.y, p.x1 + 100, p.y1, rec.product[1] || '', {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+            p = doc.printText(page.left, p.y1, page.left + 20, p.y1 + tmpRowHeight, String(Number(jdx) + 1), {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+            p = doc.printText(p.x1, p.y, p.x1 + 150, p.y1, rec.product[1] || '', {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             // p = doc.printText(p.x1, p.y, p.x1 + 100, p.y1, rec.product[1] || '', {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             // p = doc.printText(p.x1, p.y, p.x1 + 150, p.y1, "", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-            p = doc.printText(p.x1, p.y, p.x1 + 40, p.y1, rec.uom_id ? rec.uom_id[1] : '', {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+            p = doc.printText(p.x1, p.y, p.x1 + 20, p.y1, rec.uom_id ? rec.uom_id[1] : '', {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 50, p.y1, String(rec.returnQty), {lineRight: true, lineButtom: true, right: 3, vertical: 'right', horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 310, p.y1, "", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             p.y1 = p.y
@@ -608,21 +619,24 @@ export default {
             if (rec.overQty !== '' && rec.overQty!=='0') {
               strLoss += '翻包:' + rec.overQty
             }
+            if (rec.remark) {
+              strLoss += '备注:' + rec.remark
+            }
             p = doc.printText(p.x, p.y1, p.x + 310, p.y1 + rowHeight, strLoss, {vertical: 'left', horizontal: 'center', left: 3})
           }
           tmpRowHeight = rowHeight
           for (jdx = this.entry.length; jdx < 20; ++jdx) {
-            p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + tmpRowHeight, String(Number(jdx) + 1), {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-            p = doc.printText(p.x1, p.y, p.x1 + 100, p.y1, '', {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+            p = doc.printText(page.left, p.y1, page.left + 20, p.y1 + tmpRowHeight, String(Number(jdx) + 1), {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+            p = doc.printText(p.x1, p.y, p.x1 + 150, p.y1, '', {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             // p = doc.printText(p.x1, p.y, p.x1 + 150, p.y1, "", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-            p = doc.printText(p.x1, p.y, p.x1 + 40, p.y1, "", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+            p = doc.printText(p.x1, p.y, p.x1 + 20, p.y1, "", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 50, p.y1, "", {lineRight: true, lineButtom: true, right: 3, vertical: 'right', horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 310, p.y1, "", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             p.y1 = p.y
             p = doc.printText(p.x, p.y1, p.x + 310, p.y1 + rowHeight, '', {vertical: 'left', horizontal: 'center', left: 3})
           }
-          p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + tmpRowHeight, "备注", {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-          p = doc.printText(p.x1, p.y, p.x1 + 500, p.y1, this.data.desc || '', {lineRight: true, lineButtom: true, vertical: 'left', horizontal: 'center', left: 3})
+          p = doc.printText(page.left, p.y1, page.left + 20, p.y1 + tmpRowHeight, "备注", {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
+          p = doc.printText(p.x1, p.y, p.x1 + 530, p.y1, this.data.desc || '', {lineRight: true, lineButtom: true, vertical: 'left', horizontal: 'center', left: 3})
           rowHeight += 20
           p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + rowHeight, "退货人签字", {lineLeft: true, vertical: 'center', horizontal: 'center'})
           p = doc.printText(p.x1, p.y, p.x1 + 100, p.y1, "", {vertical: 'center', horizontal: 'center'})
@@ -641,9 +655,9 @@ export default {
             doc.printText(p.x, p.y, p.x + 50, p.y + 10, '总重：', {right: 3, vertical: 'right', horizontal: 'center'})
             doc.printText(p.x + 50, p.y, p.x + 150, p.y + 10, this.data.custWeight || '', {right: 3, vertical: 'left', horizontal: 'center'})
             doc.printText(p.x, p.y, p.x + 50, p.y + 30, '皮重：', {right: 3, vertical: 'right', horizontal: 'center'})
-            doc.printText(p.x + 50, p.y, p.x + 150, p.y + 30, this.data.custNet || '', {right: 3, vertical: 'left', horizontal: 'center'})
+            doc.printText(p.x + 50, p.y, p.x + 150, p.y + 30, this.data.custTare || '', {right: 3, vertical: 'left', horizontal: 'center'})
             doc.printText(p.x, p.y, p.x + 50, p.y + 50, '净重：', {right: 3, vertical: 'right', horizontal: 'center'})
-            doc.printText(p.x + 50, p.y, p.x + 150, p.y + 50, (this.data.custWeight || 0) - (this.data.custNet || 0), {right: 3, vertical: 'left', horizontal: 'center'})
+            doc.printText(p.x + 50, p.y, p.x + 150, p.y + 50, (this.data.custWeight || 0) - (this.data.custTare || 0), {right: 3, vertical: 'left', horizontal: 'center'})
           }
           rowHeight -= 20
           p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + rowHeight, "司机签字", {lineLeft: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
