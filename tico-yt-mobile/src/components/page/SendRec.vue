@@ -40,6 +40,13 @@
           <van-field v-model="custNet" readonly label="客户净重"></van-field>
           <van-field v-model="data.weight" readonly label="计算重量"></van-field>
         </van-tab>
+        <!--van-tab title="拍照">
+          <van-uploader v-model="fileList">
+            <template #preview-cover="{file}">
+              <div class="preview-cover van-elipsis">{{  file.name  }}</div>
+            </template>
+          </van-uploader>
+        </van-tab-->
       </van-tabs>
       
       
@@ -116,7 +123,8 @@ export default {
         title: '',
         data: {}
       },
-      pdfUri: ''
+      pdfUri: '',
+      fileList: []
     }
   },
   watch: {
@@ -543,7 +551,7 @@ export default {
             p = doc.printText(p.x1, p.y, p.x1 + 110, p.y1, this.data.receiverPhone || '', {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
 
             p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + rowHeight, "收货地址", {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-            p = doc.printText(p.x1, p.y, p.x1 + 190, p.y1, this.data.stockName || '', {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
+            p = doc.printText(p.x1, p.y, p.x1 + 190, p.y1, "九为仓库", {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 50, p.y1, "收货人", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 100, p.y1, '', {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 50, p.y1, "收货人电话", {lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
@@ -563,7 +571,7 @@ export default {
             // p = doc.printText(p.x1, p.y, p.x1 + 160, p.y1, "", {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
 
             p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + rowHeight, "收货地址", {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
-            p = doc.printText(p.x1, p.y, p.x1 + 340, p.y1, this.data.stockName || '', {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
+            p = doc.printText(p.x1, p.y, p.x1 + 340, p.y1, "九为仓库", {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
             p = doc.printText(p.x1, p.y, p.x1 + 160, p.y1, "", {lineRight: true, lineButtom: true, left: 3, horizontal: 'center'})
 
             p = doc.printText(page.left, p.y1, page.left + 50, p.y1 + rowHeight, "退货日期", {lineLeft: true, lineRight: true, lineButtom: true, vertical: 'center', horizontal: 'center'})
@@ -619,7 +627,7 @@ export default {
             if (rec.overQty !== '' && rec.overQty!=='0') {
               strLoss += '翻包:' + rec.overQty
             }
-            if (rec.remark) {
+            if (rec.remark && rec.remark !== 'false') {
               strLoss += '备注:' + rec.remark
             }
             p = doc.printText(p.x, p.y1, p.x + 310, p.y1 + rowHeight, strLoss, {vertical: 'left', horizontal: 'center', left: 3})
@@ -805,5 +813,16 @@ export default {
 }
 .van-tabs__line {
   z-index: 0
+}
+.preview-cover {
+  position: absolute;
+  bottom: 0;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.3);
 }
 </style>
