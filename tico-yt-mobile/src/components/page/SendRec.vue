@@ -82,18 +82,18 @@
           <van-field v-model="rec.qty" :label="rec.lossType.name" type="digit"></van-field>
         </template>
       </van-dialog>
-      <pdf v-if="pdfUri" :src="pdfUri" :page="1"></pdf>
+      <!--pdf v-if="pdfUri" :src="pdfUri" :page="1"></pdf-->
     </div>
 </template>
 
 <script>
 import { Toast, Dialog } from 'vant'
 import odooApi from '@/srv'
-import pdf from 'vue-pdf'
+// import pdf from 'vue-pdf'
 import PdfPrint from '@/utils/pdfPrint'
 export default {
   name: 'sendRec',
-  components: {pdf},
+  // components: {pdf},
   data () {
     return {
       title: '现场签收',
